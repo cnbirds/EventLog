@@ -1,0 +1,52 @@
+# Terminal Service Login Event Query Script
+# Used to query Windows Terminal Service (Remote Desktop) login-related events
+# Author: cnBirds
+
+# Register beacon command
+beacon_command_register(
+    "eventlog", 
+    "Query Windows Terminal Service login events", 
+    "Usage: Eventlog\n\nQuery Windows Terminal Service login, logoff, and disconnect events."
+);
+
+alias eventlog {
+    local('$barch $handle $data $args $bof_file');
+    
+    $barch = barch($1);
+    
+    if ($barch eq "x64") {
+        $bof_file = "EventLog.x64.obj";
+    }
+    else if ($barch eq "x86") {
+        $bof_file = "EventLog.x86.obj";
+    }
+    else {
+        berror($1, "Unsupported architecture: " . $barch);
+        return;
+    }
+    
+    $handle = openf(script_resource($bof_file));
+    
+    if ($handle is $null) {
+        berror($1, "Failed to open BOF file: " . $bof_file . ". Please ensure it exists in the script directory.");
+        return;
+    }
+    
+    $data = readb($handle, -1);
+    closef($handle);
+    
+    if (strlen($data) == 0) {
+        berror($1, "Failed to load BOF file: " . $bof_file . ". File may be empty.");
+        return;
+    }
+    
+    btask($1, "Querying Terminal Service login events...");
+    
+    beacon_inline_execute($1, $data, "go", $args);
+}
+
+on ready {
+    println("[+] Terminal Service Login Event Query Script has been loaded");
+    println("[+] Use the eventlog command to query Windows Terminal Service login-related events");
+    println("[+] Both x86 and x64 architectures are supported");
+} 
